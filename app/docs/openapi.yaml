@@ -1,0 +1,90 @@
+openapi: 3.0.0
+info:
+  title: Unified Revenue Context Engine API
+  version: 1.0.0
+  description: |
+    API for multi-tenant, compliance-native, production-grade B2B revenue orchestration platform.
+servers:
+  - url: https://api.yourdomain.com/api
+paths:
+  /auth/token:
+    post:
+      summary: Exchange API key for JWT
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                api_key:
+                  type: string
+                tenant_id:
+                  type: string
+      responses:
+        '200':
+          description: JWT token
+  /integrations/salesforce/authorize:
+    get:
+      summary: Start Salesforce OAuth flow
+      parameters:
+        - in: query
+          name: tenant_id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Auth URL
+  /integrations/salesforce/callback:
+    get:
+      summary: Salesforce OAuth callback
+      parameters:
+        - in: query
+          name: code
+          schema:
+            type: string
+        - in: query
+          name: state
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connected
+  /webhooks/salesforce:
+    post:
+      summary: Salesforce webhook receiver
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Received
+  /tenants/{tenant_id}/usage:
+    get:
+      summary: Get tenant usage/quota
+      parameters:
+        - in: path
+          name: tenant_id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usage
+  /accounts/{account_id}/export:
+    get:
+      summary: GDPR right-to-access export
+      parameters:
+        - in: path
+          name: account_id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exported data
+  /audit/export:
+    get:
+      summary: Export audit logs (signed URL)
+      responses:
+        '200':
+          description: Signed URL

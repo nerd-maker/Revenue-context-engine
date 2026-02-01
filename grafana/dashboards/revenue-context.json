@@ -1,0 +1,175 @@
+{
+  "dashboard": {
+    "title": "Revenue Context Engine - Production",
+    "tags": ["revenue-context", "production"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Signals Processed (Rate)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [{
+          "expr": "rate(signals_processed_total[5m])",
+          "legendFormat": "{{worker_id}}",
+          "refId": "A"
+        }],
+        "yaxes": [{
+          "label": "signals/sec",
+          "format": "short"
+        }]
+      },
+      {
+        "id": 2,
+        "title": "Intent Score Distribution",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [{
+          "expr": "histogram_quantile(0.50, intent_score_value_bucket)",
+          "legendFormat": "p50",
+          "refId": "A"
+        }, {
+          "expr": "histogram_quantile(0.95, intent_score_value_bucket)",
+          "legendFormat": "p95",
+          "refId": "B"
+        }, {
+          "expr": "histogram_quantile(0.99, intent_score_value_bucket)",
+          "legendFormat": "p99",
+          "refId": "C"
+        }]
+      },
+      {
+        "id": 3,
+        "title": "Cache Hit Rate",
+        "type": "gauge",
+        "gridPos": {"x": 0, "y": 8, "w": 6, "h": 6},
+        "targets": [{
+          "expr": "cache_hits_total / (cache_hits_total + cache_misses_total) * 100",
+          "refId": "A"
+        }],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": 0, "color": "red"},
+              {"value": 70, "color": "yellow"},
+              {"value": 90, "color": "green"}
+            ]
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "API Latency (p95)",
+        "type": "graph",
+        "gridPos": {"x": 6, "y": 8, "w": 18, "h": 6},
+        "targets": [{
+          "expr": "histogram_quantile(0.95, api_request_seconds_bucket)",
+          "legendFormat": "p95",
+          "refId": "A"
+        }, {
+          "expr": "histogram_quantile(0.99, api_request_seconds_bucket)",
+          "legendFormat": "p99",
+          "refId": "B"
+        }],
+        "yaxes": [{
+          "label": "seconds",
+          "format": "s"
+        }]
+      },
+      {
+        "id": 5,
+        "title": "Worker Health Status",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 14, "w": 12, "h": 4},
+        "targets": [{
+          "expr": "count(worker_heartbeat_timestamp > (time() - 60))",
+          "legendFormat": "Healthy Workers",
+          "refId": "A"
+        }]
+      },
+      {
+        "id": 6,
+        "title": "LLM API Calls",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 14, "w": 12, "h": 4},
+        "targets": [{
+          "expr": "rate(llm_api_calls_total[5m])",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }]
+      },
+      {
+        "id": 7,
+        "title": "LLM Budget Usage",
+        "type": "gauge",
+        "gridPos": {"x": 0, "y": 18, "w": 6, "h": 6},
+        "targets": [{
+          "expr": "llm_daily_spend / llm_daily_budget * 100",
+          "refId": "A"
+        }],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": 0, "color": "green"},
+              {"value": 80, "color": "yellow"},
+              {"value": 95, "color": "red"}
+            ]
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Action Creation Rate",
+        "type": "graph",
+        "gridPos": {"x": 6, "y": 18, "w": 18, "h": 6},
+        "targets": [{
+          "expr": "rate(actions_created_total[5m])",
+          "legendFormat": "{{action_type}}",
+          "refId": "A"
+        }]
+      },
+      {
+        "id": 9,
+        "title": "Database Connections",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 6},
+        "targets": [{
+          "expr": "aws_rds_database_connections_average",
+          "legendFormat": "Connections",
+          "refId": "A"
+        }]
+      },
+      {
+        "id": 10,
+        "title": "Kafka Consumer Lag",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 6},
+        "targets": [{
+          "expr": "kafka_consumer_lag",
+          "legendFormat": "{{topic}}-{{partition}}",
+          "refId": "A"
+        }],
+        "alert": {
+          "conditions": [{
+            "evaluator": {
+              "params": [10000],
+              "type": "gt"
+            },
+            "operator": {"type": "and"},
+            "query": {"params": ["A", "5m", "now"]},
+            "reducer": {"type": "avg"},
+            "type": "query"
+          }],
+          "name": "Kafka Consumer Lag High"
+        }
+      }
+    ],
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}

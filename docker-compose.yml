@@ -1,0 +1,142 @@
+version: '3.8'
+
+x-common-env: &common-env
+  DATABASE_URL: postgresql+asyncpg://postgres:Rushikesh123@db:5432/revenue_context
+  REDIS_URL: redis://redis:6379/0
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  ENV: development
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Rushikesh123
+      POSTGRES_DB: revenue_context
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  app:
+    build: .
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  # Context Engine Workers (3 replicas)
+  context-engine-1:
+    build: .
+    command: python -m app.services.context_engine
+    volumes:
+      - .:/code
+    environment:
+      <<: *common-env
+      WORKER_ID: "1"
+    depends_on:
+      - kafka
+      - db
+      - redis
+
+  context-engine-2:
+    build: .
+    command: python -m app.services.context_engine
+    volumes:
+      - .:/code
+    environment:
+      <<: *common-env
+      WORKER_ID: "2"
+    depends_on:
+      - kafka
+      - db
+      - redis
+
+  context-engine-3:
+    build: .
+    command: python -m app.services.context_engine
+    volumes:
+      - .:/code
+    environment:
+      <<: *common-env
+      WORKER_ID: "3"
+    depends_on:
+      - kafka
+      - db
+      - redis
+
+  # Orchestration Engine Workers (2 replicas)
+  orchestration-engine-1:
+    build: .
+    command: python -m app.services.orchestration_engine
+    volumes:
+      - .:/code
+    environment:
+      <<: *common-env
+      WORKER_ID: "1"
+    depends_on:
+      - kafka
+      - db
+      - redis
+
+  orchestration-engine-2:
+    build: .
+    command: python -m app.services.orchestration_engine
+    volumes:
+      - .:/code
+    environment:
+      <<: *common-env
+      WORKER_ID: "2"
+    depends_on:
+      - kafka
+      - db
+      - redis
