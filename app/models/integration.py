@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, JSON
+from sqlalchemy import Column, String, DateTime, JSON, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid
@@ -12,7 +12,7 @@ class Integration(Base):
     org_id = Column(String, nullable=False)
     encrypted_access_token = Column(String, nullable=False)
     encrypted_refresh_token = Column(String, nullable=False)
-    encryption_key_version = Column(sa.Integer, default=1)
+    encryption_key_version = Column(Integer, default=1)
     instance_url = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
