@@ -30,7 +30,7 @@ class PromptTemplate(Base):
     active = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(UUID(as_uuid=True))
-    metadata = Column(JSON, default={})  # For A/B test tracking, performance metrics
+    extra_metadata = Column(JSON, default={})  # For A/B test tracking, performance metrics
     tenant_id = Column(UUID(as_uuid=True), nullable=False)
     
     __table_args__ = (

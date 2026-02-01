@@ -51,7 +51,7 @@ class AuditLog(Base):
     user_agent = Column(String(500), nullable=True)
     
     # Additional context
-    metadata = Column(JSON, nullable=True)  # Any additional context
+    extra_metadata = Column(JSON, nullable=True)  # Any additional context
     
     __table_args__ = (
         # Composite index for common queries
@@ -69,7 +69,7 @@ async def log_audit_event(
     user_id: str = None,
     changes: dict = None,
     request: Request = None,
-    metadata: dict = None
+    extra_metadata: dict = None
 ):
     """
     Log an audit event to database and structured logging.
@@ -83,7 +83,7 @@ async def log_audit_event(
         user_id: Optional user ID
         changes: Optional dict with 'before' and 'after' states
         request: Optional FastAPI Request object (for IP and user agent)
-        metadata: Optional additional metadata
+        extra_metadata: Optional additional metadata
     
     Example Usage:
         # Log a signal creation
@@ -95,7 +95,7 @@ async def log_audit_event(
             tenant_id=str(tenant_id),
             user_id=str(user_id),
             request=request,
-            metadata={'source': 'salesforce', 'type': 'opportunity_created'}
+            extra_metadata={'source': 'salesforce', 'type': 'opportunity_created'}
         )
         
         # Log an account update with before/after
@@ -122,7 +122,7 @@ async def log_audit_event(
             tenant_id=str(tenant_id),
             user_id=str(user_id),
             request=request,
-            metadata={'reason': 'gdpr_deletion_request'}
+            extra_metadata={'reason': 'gdpr_deletion_request'}
         )
     """
     # Extract IP address and user agent from request
@@ -144,7 +144,7 @@ async def log_audit_event(
         changes=changes,
         ip_address=ip_address,
         user_agent=user_agent,
-        metadata=metadata
+        extra_metadata=extra_metadata
     )
     
     # Save to database
@@ -162,7 +162,7 @@ async def log_audit_event(
         'resource_id': str(resource_id),
         'ip_address': ip_address,
         'has_changes': changes is not None,
-        'metadata': metadata
+        'extra_metadata': extra_metadata
     }
     
     logger.info(f"AUDIT: {action.upper()} {resource_type}/{resource_id}", extra=log_data)
@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS audit_logs_v2 (
     changes JSONB,
     ip_address VARCHAR(45),
     user_agent VARCHAR(500),
-    metadata JSONB
+    extra_metadata JSONB
 ) PARTITION BY RANGE (timestamp);
 
 -- 2. Create indexes on parent table
