@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 import json
 import uuid
 try:
-    import google.generativeai as genai
+    from google import genai
 except ImportError:
     genai = None
 

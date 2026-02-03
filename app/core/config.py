@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     CLEARBIT_API_KEY: str = os.getenv('CLEARBIT_API_KEY', '')
     SALESFORCE_CLIENT_ID: str = os.getenv('SALESFORCE_CLIENT_ID', '')
     SALESFORCE_CLIENT_SECRET: str = os.getenv('SALESFORCE_CLIENT_SECRET', '')
+    SALESFORCE_REDIRECT_URI: str = os.getenv('SALESFORCE_REDIRECT_URI', '')
 
     # Security
     ENCRYPTION_KEY: str = os.getenv('ENCRYPTION_KEY', '')
