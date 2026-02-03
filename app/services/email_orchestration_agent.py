@@ -26,9 +26,9 @@ from datetime import datetime, timedelta
 import json
 import uuid
 try:
-    import openai
+    import google.generativeai as genai
 except ImportError:
-    openai = None
+    genai = None
 
 # Metrics imports
 from app.monitoring.metrics import (
@@ -47,7 +47,9 @@ HIGH_INTENT_THRESHOLD = 75.0
 DO_NOT_SAY = ["pricing", "competitor", "synergy", "game-changer"]
 BRAND_VOICE = "Professional, concise, no buzzwords."
 
-openai.api_key = settings.OPENAI_API_KEY
+# Configure Gemini API
+if genai:
+    genai.configure(api_key=settings.GEMINI_API_KEY)
 
 PROMPT_TEMPLATE = """
 You are an expert B2B sales assistant. Write a personalized, compliant outbound email for the following account.
@@ -87,22 +89,34 @@ class EmailOrchestrationAgent:
 
     @track_latency(EMAIL_GENERATION_LATENCY)
     async def generate_email(self, context, signals, deal_stage, industry):
+        if not genai:
+            raise ImportError("google-generativeai not installed. Install with: pip install google-generativeai")
+        
         prompt = build_email_prompt(
             context["account_name"], industry, deal_stage, json.dumps(signals, indent=2), BRAND_VOICE, DO_NOT_SAY
         )
         
         try:
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-4",
-                messages=[{"role": "system", "content": prompt}],
-                temperature=0.4,
-                max_tokens=512
+            # Use Gemini Pro model
+            model = genai.GenerativeModel('gemini-pro')
+            
+            # Generate content (Gemini SDK doesn't have async yet, run in executor)
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.4,
+                        max_output_tokens=512,
+                    )
+                )
             )
             
             # Track successful LLM call
-            LLM_API_CALLS.labels(model="gpt-4", status="success").inc()
+            LLM_API_CALLS.labels(model="gemini-pro", status="success").inc()
             
-            content = response.choices[0].message.content
+            content = response.text
             try:
                 email_obj = json.loads(content)
             except Exception:
@@ -116,7 +130,8 @@ class EmailOrchestrationAgent:
             
         except Exception as e:
             # Track failed LLM call
-            LLM_API_CALLS.labels(model="gpt-4", status="error").inc()
+            LLM_API_CALLS.labels(model="gemini-pro", status="error").inc()
+            logger.error(f"Gemini API error: {e}")
             raise
 
     async def create_action(self, session, context, email_obj, risk_level):
